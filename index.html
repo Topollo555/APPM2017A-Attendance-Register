@@ -1,22 +1,50 @@
-<h1>APPM2017A Attendance Register</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APPM2017A Attendance Register</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>📋 APPM2017A Attendance Register</h1>
+            <p class="subtitle">Check in with your location</p>
+            
+            <form id="attendanceForm" onsubmit="handleSubmit(event)">
+                <div class="form-group">
+                    <input type="text" id="studentNumber" placeholder="Student Number" required>
+                </div>
 
-<input type="text" id="studentNumber" placeholder="Student Number">
+                <div class="form-group">
+                    <input type="text" id="surname" placeholder="Surname" required>
+                </div>
 
-<br><br>
+                <div class="form-group">
+                    <input type="text" id="initials" placeholder="Initials" required>
+                </div>
 
-<input type="text" id="surname" placeholder="Surname">
+                <div class="form-group">
+                    <select id="lectureType" required>
+                        <option value="">Select Lecture Type</option>
+                        <option value="Lecture">Lecture</option>
+                        <option value="Test">Test</option>
+                        <option value="Tut">Tutorial</option>
+                    </select>
+                </div>
 
-<br><br>
+                <button type="submit" class="btn btn-primary">Check In</button>
+            </form>
+            
+            <div id="message" class="message"></div>
+            
+            <div id="locationInfo" class="location-info" style="display:none;">
+                <p><strong>Distance from lecture hall:</strong> <span id="distanceDisplay">--</span> metres</p>
+            </div>
+        </div>
+    </div>
 
-<input type="text" id="initials" placeholder="Initials">
-
-<br><br>
-
-<input type="text" id="lectureType" placeholder="Lecture Type ( Lecture/Test/Tut)">
-
-<br><br>
-
-<button onclick="checkIn()">Check In</button>
-
-<p id="message"></p>
-<hr>
+    <script src="script.js"></script>
+</body>
+</html>
