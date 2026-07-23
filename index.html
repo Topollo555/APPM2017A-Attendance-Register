@@ -7,143 +7,138 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Dynamic Mathematical Background -->
-    <canvas id="mathCanvas" class="math-background"></canvas>
+    <!-- Static Background -->
+    <div class="background"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-left">
+                <a href="#" class="nav-link active" id="nav-student" onclick="switchView('student')">Student Check-In</a>
+                <a href="#" class="nav-link" id="nav-admin" onclick="switchView('admin')">Admin Panel</a>
+                <a href="#" class="nav-link" id="adminNavItem" style="display:none" onclick="switchView('admin')">Dashboard</a>
+            </div>
+            <div class="nav-right">
+                <a href="#" class="nav-link" id="logoutItem" style="display:none" onclick="logout()">Logout</a>
+                <a href="#" class="nav-link" id="nav-about" onclick="switchView('about')">About</a>
+            </div>
+        </div>
+    </nav>
 
     <!-- Admin Login Modal -->
     <div id="adminLoginModal" class="modal">
         <div class="modal-content">
             <h2>Admin Access</h2>
-            <p>Enter the admin password to access the dashboard</p>
-            <input type="password" id="adminPassword" placeholder="Enter password" />
-            <button class="btn btn-primary" onclick="validateAdminPassword()">Login</button>
-            <p id="loginError" class="error-message"></p>
+            <input type="password" id="adminPassword" placeholder="Enter admin password" onkeypress="if(event.key==='Enter') validateAdminPassword()">
+            <button onclick="validateAdminPassword()" class="btn-primary">Login</button>
+            <p id="loginError" style="color: red; margin-top: 10px;"></p>
         </div>
     </div>
-
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-brand">∑ APPM2017A</div>
-            <ul class="nav-menu">
-                <li><a href="#" onclick="switchView('student')" class="nav-link active" id="nav-student">Student Check-In</a></li>
-                <li id="adminNavItem" style="display:none;"><a href="#" onclick="switchView('admin')" class="nav-link" id="nav-admin">Admin Dashboard</a></li>
-                <li id="logoutItem" style="display:none;"><a href="#" onclick="logout()" class="nav-link">Logout</a></li>
-            </ul>
-        </div>
-    </nav>
 
     <!-- Student View -->
     <div id="studentView" class="view active">
         <div class="container">
-            <div class="card">
-                <h1>📚 Attendance Register</h1>
-                <p class="subtitle">Check in with your location</p>
-                
-                <form id="attendanceForm" onsubmit="handleSubmit(event)">
-                    <div class="form-group">
-                        <input type="text" id="studentNumber" placeholder="Student Number" required>
-                    </div>
+            <h1>APPM2017A Attendance Register</h1>
+            <p class="subtitle">Check in for your lecture</p>
 
-                    <div class="form-group">
-                        <input type="text" id="surname" placeholder="Surname" required>
-                    </div>
-
-                    <div class="form-group">
-                        <input type="text" id="initials" placeholder="Initials" required>
-                    </div>
-
-                    <div class="form-group">
-                        <select id="lectureType" required>
-                            <option value="">Select Lecture Type</option>
-                            <option value="Lecture">Lecture</option>
-                            <option value="Test">Test</option>
-                            <option value="Tut">Tutorial</option>
-                        </select>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">✓ Check In</button>
-                </form>
-                
-                <div id="message" class="message"></div>
-                
-                <div id="locationInfo" class="location-info" style="display:none;">
-                    <p><strong>Distance from lecture hall:</strong> <span id="distanceDisplay">--</span> metres</p>
+            <form id="attendanceForm" onsubmit="handleSubmit(event)">
+                <div class="form-group">
+                    <input type="text" id="studentNumber" placeholder="Student Number" required>
                 </div>
+                <div class="form-group">
+                    <input type="text" id="surname" placeholder="Surname" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="initials" placeholder="Initials" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="lectureType" placeholder="Lecture Type (Lecture/Test/Tut)" required>
+                </div>
+                <button type="submit" class="btn-primary">Check In</button>
+            </form>
+
+            <div id="locationInfo" style="display:none;" class="location-info">
+                <p>📍 Distance from venue: <span id="distanceDisplay">0</span>m</p>
             </div>
+
+            <div id="message" class="message"></div>
         </div>
     </div>
 
     <!-- Admin View -->
     <div id="adminView" class="view">
         <div class="admin-container">
-            <div class="admin-header">
-                <h2>📊 Admin Dashboard</h2>
-                <p id="currentDate" class="current-date">Loading...</p>
+            <h1>Admin Dashboard</h1>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Check-ins</h3>
+                    <p id="totalCheckins">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Present</h3>
+                    <p id="presentCount">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Outside Area</h3>
+                    <p id="absentCount">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Attendance Rate</h3>
+                    <p id="attendanceRate">-</p>
+                </div>
             </div>
 
-            <div class="admin-content">
-                <!-- Left Sidebar - Calendar -->
-                <div class="admin-sidebar">
-                    <div class="calendar-widget">
-                        <h3>📅 Calendar</h3>
-                        <div id="calendar" class="calendar"></div>
-                        <div class="date-stats">
-                            <p id="selectedDateInfo">Select a date</p>
-                            <p id="selectedDateAttendance">-</p>
-                        </div>
-                    </div>
+            <div class="calendar-section">
+                <h2>Calendar View</h2>
+                <div id="calendar"></div>
+                <div class="date-stats">
+                    <p id="selectedDateInfo"></p>
+                    <p id="selectedDateAttendance"></p>
                 </div>
+            </div>
 
-                <!-- Main Content Area -->
-                <div class="admin-main">
-                    <div class="admin-stats">
-                        <div class="stat-card">
-                            <div class="stat-number" id="totalCheckins">0</div>
-                            <div class="stat-label">Total Check-ins</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" id="presentCount">0</div>
-                            <div class="stat-label">Present</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" id="absentCount">0</div>
-                            <div class="stat-label">Outside Area</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-number" id="attendanceRate">-</div>
-                            <div class="stat-label">Attendance Rate</div>
-                        </div>
-                    </div>
+            <h2>Attendance Records</h2>
+            <table class="attendance-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Student Number</th>
+                        <th>Name</th>
+                        <th>Lecture Type</th>
+                        <th>Status</th>
+                        <th>Distance (m)</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
 
-                    <div class="admin-controls">
-                        <button class="btn btn-secondary" onclick="exportData()">📥 Export as CSV</button>
-                        <button class="btn btn-secondary" onclick="clearAllData()">🗑️ Clear Data</button>
-                    </div>
+            <div class="admin-actions">
+                <button onclick="exportData()" class="btn-secondary">📥 Export to CSV</button>
+                <button onclick="clearAllData()" class="btn-danger">🗑️ Clear All Data</button>
+            </div>
+        </div>
+    </div>
 
-                    <div class="attendance-table-container">
-                        <h3>Recent Attendance Records</h3>
-                        <table class="attendance-table" id="attendanceTable">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Student Number</th>
-                                    <th>Name</th>
-                                    <th>Lecture Type</th>
-                                    <th>Status</th>
-                                    <th>Distance (m)</th>
-                                    <th>Date</th>
-                                    <th>Time</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody">
-                                <tr class="empty-row">
-                                    <td colspan="8">No records yet</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+    <!-- About View -->
+    <div id="aboutView" class="view">
+        <div class="container">
+            <h1>About APPM2017A Attendance Register</h1>
+            <div class="about-content">
+                <h2>Features</h2>
+                <ul>
+                    <li>✓ Geolocation-based attendance verification</li>
+                    <li>✓ Local data storage with cloud backup</li>
+                    <li>✓ Admin dashboard with analytics</li>
+                    <li>✓ Calendar view for attendance tracking</li>
+                    <li>✓ CSV export functionality</li>
+                </ul>
+                <h2>How It Works</h2>
+                <p>Students enter their details and check in. The system verifies their location against the lecture venue coordinates and records their attendance status.</p>
+                <h2>Technical Details</h2>
+                <p>This application uses HTML5 Geolocation API and stores records in browser localStorage with cloud synchronization via Google Sheets.</p>
             </div>
         </div>
     </div>
