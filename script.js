@@ -25,7 +25,8 @@ window.addEventListener('load', function() {
 });
 
 // ===============================
-// Dynamic Mathematical Canvas - Equations moving into space
+// Dynamic Mathematical Canvas - Equations flowing into 3D space
+// Based on the reference image with equations moving in perspective
 // ===============================
 function initializeCanvas() {
     const canvas = document.getElementById('mathCanvas');
@@ -34,26 +35,30 @@ function initializeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
-    // Mathematical equations and symbols
+    // Mathematical equations and symbols matching the reference image
     const equations = [
-        '∫f(x)dx', '∑(n)', '∇·F', '∂u/∂t', 'e^(iπ)+1=0', 
+        'f(x)dx', '∑(n)', '∇·F', '∂u/∂t', 'e^(iπ)+1=0', 
         'P(A|B)', 'lim x→∞', '∏(1/n)', 'f(x)=mx+b', 'σ²',
         'α+β=γ', 'Δy/Δx', 'λφ=φλ', '∞', 'ℝ³',
-        '∂²u/∂t²', 'e^x', 'π', 'φ=(1+√5)/2', 'log(x)'
+        '∂²u/∂t²', 'e^x', 'π', 'φ=(1+√5)/2', 'log(x)',
+        '∫∫∫', 'd/dx', 'cos(θ)', 'sin(θ)', '∂/∂x',
+        'x²+y²=r²', 'tan(θ)', 'cot(x)', 'sec(x)', 'csc(x)'
     ];
     
     let particles = [];
     
-    // Create particles at random positions across the screen
+    // Vanishing point in the center of the screen (perspective effect)
+    const vpX = canvas.width / 2;
+    const vpY = canvas.height / 2;
+    
     function createParticle() {
-        // Random starting position
+        // Random starting position around the edges/screen
         const startX = Math.random() * canvas.width;
         const startY = Math.random() * canvas.height;
         
-        // Direction angles (arrows point into the scene)
-        // Multiple directions to simulate 3D perspective convergence
-        const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 1.5 + 0.8; // Moderate speed
+        // Direction towards vanishing point (3D perspective)
+        const angle = Math.atan2(vpY - startY, vpX - startX);
+        const speed = Math.random() * 2 + 1.2; // Moderate speed
         
         return {
             x: startX,
@@ -61,52 +66,68 @@ function initializeCanvas() {
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
             text: equations[Math.floor(Math.random() * equations.length)],
-            opacity: Math.random() * 0.4 + 0.2,
-            size: Math.random() * 10 + 8,
+            opacity: Math.random() * 0.5 + 0.15,
+            size: Math.random() * 12 + 10,
             life: 1.0,
-            maxLife: 1.0
+            maxLife: 1.0,
+            distToVP: Math.hypot(vpX - startX, vpY - startY)
         };
     }
     
-    // Initialize particles
-    for (let i = 0; i < 20; i++) {
+    // Initialize with particles
+    for (let i = 0; i < 25; i++) {
         particles.push(createParticle());
     }
     
     function animate() {
-        // Clear canvas with semi-transparent fill for motion trail effect
-        ctx.fillStyle = 'rgba(10, 14, 39, 0.15)';
+        // Clear with semi-transparent overlay for motion trail
+        ctx.fillStyle = 'rgba(10, 14, 39, 0.08)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Add subtle grid/perspective lines
+        ctx.strokeStyle = 'rgba(52, 152, 219, 0.03)';
+        ctx.lineWidth = 0.5;
         
         // Update and draw particles
         for (let i = particles.length - 1; i >= 0; i--) {
             const p = particles[i];
             
-            // Move particle
+            // Move particle towards vanishing point
             p.x += p.vx;
             p.y += p.vy;
             
-            // Fade out
-            p.life -= 0.008;
+            // Fade out as particle gets closer to vanishing point
+            const distToVP = Math.hypot(vpX - p.x, vpY - p.y);
+            const fadeThreshold = 150;
+            if (distToVP < fadeThreshold) {
+                p.life -= 0.02;
+            } else {
+                p.life -= 0.006;
+            }
             
-            // Remove if off screen or faded
-            if (p.x < -100 || p.x > canvas.width + 100 || 
-                p.y < -100 || p.y > canvas.height + 100 || 
-                p.life <= 0) {
+            // Remove if faded or off screen
+            if (p.life <= 0) {
                 particles.splice(i, 1);
                 particles.push(createParticle());
                 continue;
             }
             
-            // Draw particle with glow effect
-            const alpha = p.opacity * p.life;
+            // Scale based on distance (perspective)
+            const maxDist = Math.hypot(vpX, vpY) * 1.5;
+            const scale = Math.max(0.3, 1 - (p.distToVP - distToVP) / maxDist);
+            
+            // Draw equation with glow
+            const alpha = p.opacity * p.life * scale;
+            const fontSize = p.size * scale;
             
             ctx.save();
-            ctx.globalAlpha = alpha * 0.6;
+            ctx.globalAlpha = alpha * 0.7;
             ctx.fillStyle = '#3498db';
-            ctx.shadowColor = 'rgba(52, 152, 219, 0.8)';
-            ctx.shadowBlur = 8;
-            ctx.font = `bold ${p.size}px Arial`;
+            ctx.shadowColor = 'rgba(52, 152, 219, 0.9)';
+            ctx.shadowBlur = 12 * scale;
+            ctx.font = `bold ${fontSize}px 'Courier New', monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
             ctx.fillText(p.text, p.x, p.y);
             ctx.restore();
         }
