@@ -7,40 +7,110 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <h1>📋 APPM2017A Attendance Register</h1>
-            <p class="subtitle">Check in with your location</p>
-            
-            <form id="attendanceForm" onsubmit="handleSubmit(event)">
-                <div class="form-group">
-                    <input type="text" id="studentNumber" placeholder="Student Number" required>
-                </div>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">∑ APPM2017A</div>
+            <ul class="nav-menu">
+                <li><a href="#" onclick="switchView('student')" class="nav-link active" id="nav-student">Student Check-In</a></li>
+                <li><a href="#" onclick="switchView('admin')" class="nav-link" id="nav-admin">Admin Dashboard</a></li>
+            </ul>
+        </div>
+    </nav>
 
-                <div class="form-group">
-                    <input type="text" id="surname" placeholder="Surname" required>
-                </div>
+    <!-- Student View -->
+    <div id="studentView" class="view active">
+        <div class="container">
+            <div class="card">
+                <h1>📐 Attendance Register</h1>
+                <p class="subtitle">Check in with your location</p>
+                
+                <form id="attendanceForm" onsubmit="handleSubmit(event)">
+                    <div class="form-group">
+                        <input type="text" id="studentNumber" placeholder="Student Number" required>
+                    </div>
 
-                <div class="form-group">
-                    <input type="text" id="initials" placeholder="Initials" required>
-                </div>
+                    <div class="form-group">
+                        <input type="text" id="surname" placeholder="Surname" required>
+                    </div>
 
-                <div class="form-group">
-                    <select id="lectureType" required>
-                        <option value="">Select Lecture Type</option>
-                        <option value="Lecture">Lecture</option>
-                        <option value="Test">Test</option>
-                        <option value="Tut">Tutorial</option>
-                    </select>
-                </div>
+                    <div class="form-group">
+                        <input type="text" id="initials" placeholder="Initials" required>
+                    </div>
 
-                <button type="submit" class="btn btn-primary">Check In</button>
-            </form>
-            
-            <div id="message" class="message"></div>
-            
-            <div id="locationInfo" class="location-info" style="display:none;">
-                <p><strong>Distance from lecture hall:</strong> <span id="distanceDisplay">--</span> metres</p>
+                    <div class="form-group">
+                        <select id="lectureType" required>
+                            <option value="">Select Lecture Type</option>
+                            <option value="Lecture">Lecture</option>
+                            <option value="Test">Test</option>
+                            <option value="Tut">Tutorial</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">✓ Check In</button>
+                </form>
+                
+                <div id="message" class="message"></div>
+                
+                <div id="locationInfo" class="location-info" style="display:none;">
+                    <p><strong>Distance from lecture hall:</strong> <span id="distanceDisplay">--</span> metres</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin View -->
+    <div id="adminView" class="view">
+        <div class="admin-container">
+            <div class="admin-header">
+                <h2>📊 Admin Dashboard</h2>
+                <p>Real-time Attendance Tracking</p>
+            </div>
+
+            <div class="admin-stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalCheckins">0</div>
+                    <div class="stat-label">Total Check-ins</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="presentCount">0</div>
+                    <div class="stat-label">Present</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="absentCount">0</div>
+                    <div class="stat-label">Outside Area</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="attendanceRate">-</div>
+                    <div class="stat-label">Attendance Rate</div>
+                </div>
+            </div>
+
+            <div class="admin-controls">
+                <button class="btn btn-secondary" onclick="exportData()">📥 Export as CSV</button>
+                <button class="btn btn-secondary" onclick="clearAllData()">🗑️ Clear Data</button>
+            </div>
+
+            <div class="attendance-table-container">
+                <h3>Recent Attendance Records</h3>
+                <table class="attendance-table" id="attendanceTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Student Number</th>
+                            <th>Name</th>
+                            <th>Lecture Type</th>
+                            <th>Status</th>
+                            <th>Distance (m)</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr class="empty-row">
+                            <td colspan="7">No records yet</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
