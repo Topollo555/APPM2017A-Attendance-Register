@@ -2,36 +2,145 @@
 // APPM2017A Attendance Register
 // ===============================
 
-// Google Apps Script Web App URL
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx77CSArdgvret1DUQdlH1uEX-Bo55VhWj-Cx3OMMX_JVEsTopLXs9dhLc-Q5NXKeLU/exec";
-
-// Lecture Hall Coordinates
 const LECTURE_LAT = -26.188912;
 const LECTURE_LON = 28.026473;
 const ALLOWED_RADIUS = 100;
-
-// Local Storage Key
 const STORAGE_KEY = "appm2017_attendance";
+const ADMIN_PASSWORD = "APPM2017"; // Change this to your desired password
 
-// Initialize on page load
+let adminLoggedIn = false;
+let selectedDate = new Date();
+let currentCalendarMonth = new Date();
+
+// ===============================
+// Initialize on Page Load
+// ===============================
 window.addEventListener('load', function() {
+    initializeCanvas();
     loadAttendanceData();
     updateAdminStats();
+    renderCalendar();
+    updateCurrentDate();
 });
+
+// ===============================
+// Dynamic Mathematical Canvas Background
+// ===============================
+function initializeCanvas() {
+    const canvas = document.getElementById('mathCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    const equations = [
+        '∫f(x)dx', '∑(n)', '∇·F', '∂u/∂t', 'e^(iπ)+1=0', 
+        'P(A|B)', 'lim x→∞', '∏(1/n)', 'f(x)=mx+b', 'σ²',
+        'α+β=γ', 'Δy/Δx', 'λφ=φλ', '∞', 'ℝ³'
+    ];
+    
+    let particles = [];
+    
+    // Create particles
+    for (let i = 0; i < 15; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: -50,
+            z: Math.random() * 100,
+            text: equations[Math.floor(Math.random() * equations.length)],
+            speed: Math.random() * 0.5 + 0.2,
+            opacity: Math.random() * 0.3 + 0.1
+        });
+    }
+    
+    function animate() {
+        // Clear with semi-transparent background for motion blur
+        ctx.fillStyle = 'rgba(10, 14, 39, 0.1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        particles.forEach((p, index) => {
+            // Move particle
+            p.y += p.speed * p.z * 0.1;
+            p.z -= 0.5;
+            
+            // Reset if off screen
+            if (p.y > canvas.height || p.z <= 0) {
+                particles[index] = {
+                    x: Math.random() * canvas.width,
+                    y: -50,
+                    z: Math.random() * 100 + 50,
+                    text: equations[Math.floor(Math.random() * equations.length)],
+                    speed: Math.random() * 0.5 + 0.2,
+                    opacity: Math.random() * 0.3 + 0.1
+                };
+            }
+            
+            // Draw particle
+            const scale = (100 - p.z) / 100;
+            const size = 8 + scale * 20;
+            const alpha = p.opacity * scale;
+            
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, alpha);
+            ctx.fillStyle = '#3498db';
+            ctx.font = `${size}px Arial`;
+            ctx.fillText(p.text, p.x, p.y);
+            ctx.restore();
+        });
+        
+        requestAnimationFrame(animate);
+    }
+    
+    animate();
+}
+
+window.addEventListener('resize', function() {
+    initializeCanvas();
+});
+
+// ===============================
+// Admin Access Control
+// ===============================
+function validateAdminPassword() {
+    const password = document.getElementById('adminPassword').value;
+    const errorMsg = document.getElementById('loginError');
+    
+    if (password === ADMIN_PASSWORD) {
+        adminLoggedIn = true;
+        document.getElementById('adminLoginModal').classList.remove('active');
+        document.getElementById('adminNavItem').style.display = 'block';
+        document.getElementById('logoutItem').style.display = 'block';
+        showMessage('Admin access granted!', 'success');
+    } else {
+        errorMsg.textContent = 'Invalid password';
+    }
+}
+
+function logout() {
+    adminLoggedIn = false;
+    document.getElementById('adminNavItem').style.display = 'none';
+    document.getElementById('logoutItem').style.display = 'none';
+    switchView('student');
+}
 
 // ===============================
 // View Switching
 // ===============================
 function switchView(view) {
-    // Hide all views
+    if (view === 'admin' && !adminLoggedIn) {
+        document.getElementById('adminLoginModal').classList.add('active');
+        document.getElementById('adminPassword').value = '';
+        document.getElementById('loginError').textContent = '';
+        return;
+    }
+    
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-
-    // Show selected view
+    
     document.getElementById(view + 'View').classList.add('active');
     document.getElementById('nav-' + view).classList.add('active');
-
-    // Refresh admin data if admin view
+    
     if (view === 'admin') {
         loadAttendanceData();
         updateAdminStats();
@@ -39,7 +148,7 @@ function switchView(view) {
 }
 
 // ===============================
-// Form Submission Handler
+// Form Submission
 // ===============================
 function handleSubmit(event) {
     event.preventDefault();
@@ -73,16 +182,7 @@ function checkIn() {
         function(position) {
             const latitude = position.coords.latitude;
             const longitude = position.coords.longitude;
-
-            const distance = Math.round(
-                getDistance(
-                    latitude,
-                    longitude,
-                    LECTURE_LAT,
-                    LECTURE_LON
-                )
-            );
-
+            const distance = Math.round(getDistance(latitude, longitude, LECTURE_LAT, LECTURE_LON));
             const isPresent = distance <= ALLOWED_RADIUS;
             const status = isPresent ? "✅ Present" : "❌ Outside Allowed Area";
 
@@ -101,34 +201,24 @@ function checkIn() {
                 timestamp: new Date().toISOString()
             };
 
-            console.log("Sending attendance data:", payload);
-
-            // Save to local storage
             saveAttendanceLocal(payload);
 
-            // Send to Google Apps Script
             fetch(SCRIPT_URL, {
                 method: "POST",
                 mode: "no-cors",
-                headers: {
-                    "Content-Type": "text/plain;charset=utf-8"
-                },
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(payload)
             })
             .then(function() {
                 let successMessage = `✅ Attendance Recorded<br>`;
                 successMessage += `<strong>${surname}, ${initials}</strong><br>`;
-                successMessage += `📍 Distance: ${distance}m<br>`;
-                successMessage += status;
-
+                successMessage += `📍 Distance: ${distance}m<br>` + status;
                 showMessage(successMessage, "success");
-
                 document.getElementById("attendanceForm").reset();
                 document.getElementById("locationInfo").style.display = "none";
             })
             .catch(function(error) {
-                console.error("Error:", error);
-                showMessage("✓ Attendance saved locally. Please try again.", "success");
+                showMessage("✓ Saved locally.", "success");
                 document.getElementById("attendanceForm").reset();
             })
             .finally(function() {
@@ -136,22 +226,18 @@ function checkIn() {
             });
         },
         function(error) {
-            console.error("Geolocation error:", error);
             button.disabled = false;
-
-            let errorMessage = "❌ Unable to get your location. ";
+            let errorMessage = "❌ Unable to get location. ";
             switch(error.code) {
                 case error.PERMISSION_DENIED:
-                    errorMessage += "Please enable location permission.";
+                    errorMessage += "Enable location permission.";
                     break;
                 case error.POSITION_UNAVAILABLE:
-                    errorMessage += "Location information unavailable.";
+                    errorMessage += "Location unavailable.";
                     break;
                 case error.TIMEOUT:
-                    errorMessage += "Location request timed out. Try again.";
+                    errorMessage += "Timeout. Try again.";
                     break;
-                default:
-                    errorMessage += "An unknown error occurred.";
             }
             showMessage(errorMessage, "error");
         }
@@ -164,7 +250,6 @@ function checkIn() {
 function saveAttendanceLocal(record) {
     let records = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
     record.id = records.length + 1;
-    record.savedTime = new Date().toLocaleString();
     records.push(record);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
 }
@@ -174,28 +259,29 @@ function loadAttendanceData() {
     const tableBody = document.getElementById("tableBody");
 
     if (records.length === 0) {
-        tableBody.innerHTML = '<tr class="empty-row"><td colspan="7">No records yet</td></tr>';
+        tableBody.innerHTML = '<tr class="empty-row"><td colspan="8">No records yet</td></tr>';
         return;
     }
 
-    tableBody.innerHTML = records.map((record, index) => `
-        <tr>
-            <td>${records.length - index}</td>
-            <td>${record.studentNumber}</td>
-            <td>${record.surname}, ${record.initials}</td>
-            <td>${record.lectureType}</td>
-            <td class="${record.status.includes('Present') ? 'status-present' : 'status-absent'}">
-                ${record.status}
-            </td>
-            <td>${record.distance}</td>
-            <td>${new Date(record.timestamp).toLocaleTimeString()}</td>
-        </tr>
-    `).join('');
+    tableBody.innerHTML = records.map((record, index) => {
+        const date = new Date(record.timestamp);
+        return `
+            <tr>
+                <td>${records.length - index}</td>
+                <td>${record.studentNumber}</td>
+                <td>${record.surname}, ${record.initials}</td>
+                <td>${record.lectureType}</td>
+                <td class="${record.status.includes('Present') ? 'status-present' : 'status-absent'}">${record.status}</td>
+                <td>${record.distance}</td>
+                <td>${date.toLocaleDateString()}</td>
+                <td>${date.toLocaleTimeString()}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function updateAdminStats() {
     let records = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    
     const total = records.length;
     const present = records.filter(r => r.status.includes('Present')).length;
     const absent = records.filter(r => r.status.includes('Outside')).length;
@@ -208,19 +294,120 @@ function updateAdminStats() {
 }
 
 // ===============================
-// Export Data as CSV
+// Calendar Management
+// ===============================
+function renderCalendar() {
+    const year = currentCalendarMonth.getFullYear();
+    const month = currentCalendarMonth.getMonth();
+    
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    let html = `
+        <div class="calendar-header">
+            <button onclick="prevMonth()">&lt; Prev</button>
+            <span>${monthNames[month]} ${year}</span>
+            <button onclick="nextMonth()">Next &gt;</button>
+        </div>
+        <div class="calendar-days">
+    `;
+    
+    // Previous month days
+    for (let i = firstDay - 1; i >= 0; i--) {
+        html += `<div class="calendar-day" style="opacity: 0.3;">${daysInPrevMonth - i}</div>`;
+    }
+    
+    // Current month days
+    const today = new Date();
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateStr = date.toISOString().split('T')[0];
+        const hasRecords = hasAttendanceForDate(dateStr);
+        const isToday = date.toDateString() === today.toDateString();
+        const isSelected = date.toDateString() === selectedDate.toDateString();
+        
+        let classes = 'calendar-day';
+        if (isToday) classes += ' today';
+        if (hasRecords) classes += ' has-data';
+        if (isSelected) classes += ' selected';
+        
+        html += `<div class="${classes}" onclick="selectDate(new Date(${year}, ${month}, ${day}))">${day}</div>`;
+    }
+    
+    // Next month days
+    const totalCells = firstDay + daysInMonth;
+    const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    for (let day = 1; day <= remainingCells; day++) {
+        html += `<div class="calendar-day" style="opacity: 0.3;">${day}</div>`;
+    }
+    
+    html += '</div>';
+    document.getElementById('calendar').innerHTML = html;
+    updateDateStats();
+}
+
+function prevMonth() {
+    currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() - 1);
+    renderCalendar();
+}
+
+function nextMonth() {
+    currentCalendarMonth.setMonth(currentCalendarMonth.getMonth() + 1);
+    renderCalendar();
+}
+
+function selectDate(date) {
+    selectedDate = date;
+    renderCalendar();
+}
+
+function hasAttendanceForDate(dateStr) {
+    let records = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    return records.some(r => r.timestamp.split('T')[0] === dateStr);
+}
+
+function updateDateStats() {
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    let records = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    const dateRecords = records.filter(r => r.timestamp.split('T')[0] === dateStr);
+    
+    const info = document.getElementById('selectedDateInfo');
+    const attendance = document.getElementById('selectedDateAttendance');
+    
+    info.textContent = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    
+    if (dateRecords.length === 0) {
+        attendance.textContent = 'No records';
+    } else {
+        const present = dateRecords.filter(r => r.status.includes('Present')).length;
+        attendance.textContent = `✓ ${present}/${dateRecords.length}`;
+    }
+}
+
+function updateCurrentDate() {
+    const today = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('currentDate').textContent = today.toLocaleDateString('en-US', options);
+}
+
+// ===============================
+// Export & Clear Functions
 // ===============================
 function exportData() {
     let records = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    
     if (records.length === 0) {
         alert('No data to export!');
         return;
     }
 
-    let csv = 'Student Number,Name,Lecture Type,Status,Distance (m),Time\n';
+    let csv = 'Student Number,Name,Lecture Type,Status,Distance (m),Date,Time\n';
     records.forEach(record => {
-        csv += `"${record.studentNumber}","${record.surname}, ${record.initials}","${record.lectureType}","${record.status}",${record.distance},"${new Date(record.timestamp).toLocaleString()}"\n`;
+        const date = new Date(record.timestamp);
+        csv += `"${record.studentNumber}","${record.surname}, ${record.initials}","${record.lectureType}","${record.status}",${record.distance},"${date.toLocaleDateString()}","${date.toLocaleTimeString()}"\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -232,20 +419,18 @@ function exportData() {
     window.URL.revokeObjectURL(url);
 }
 
-// ===============================
-// Clear All Data
-// ===============================
 function clearAllData() {
-    if (confirm('Are you sure? This will delete all attendance records.')) {
+    if (confirm('Delete all attendance records? This cannot be undone.')) {
         localStorage.removeItem(STORAGE_KEY);
         loadAttendanceData();
         updateAdminStats();
+        renderCalendar();
         alert('All data cleared!');
     }
 }
 
 // ===============================
-// Show Message Helper
+// Utilities
 // ===============================
 function showMessage(message, type) {
     const messageDiv = document.getElementById("message");
@@ -253,22 +438,13 @@ function showMessage(message, type) {
     messageDiv.className = "message show " + type;
 }
 
-// ===============================
-// Haversine Distance Formula
-// ===============================
 function getDistance(lat1, lon1, lat2, lon2) {
     const R = 6371000;
-
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) *
-        Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
     return R * c;
 }
