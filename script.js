@@ -7,7 +7,7 @@ const LECTURE_LAT = -26.188912;
 const LECTURE_LON = 28.026473;
 const ALLOWED_RADIUS = 100;
 const STORAGE_KEY = "appm2017_attendance";
-const ADMIN_PASSWORD = "APPM2017"; // Change this to your desired password
+const ADMIN_PASSWORD = "APPM2017";
 
 let adminLoggedIn = false;
 let selectedDate = new Date();
@@ -25,7 +25,7 @@ window.addEventListener('load', function() {
 });
 
 // ===============================
-// Dynamic Mathematical Canvas Background
+// Dynamic Mathematical Canvas - Equations moving into space
 // ===============================
 function initializeCanvas() {
     const canvas = document.getElementById('mathCanvas');
@@ -34,60 +34,82 @@ function initializeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     
+    // Mathematical equations and symbols
     const equations = [
         '∫f(x)dx', '∑(n)', '∇·F', '∂u/∂t', 'e^(iπ)+1=0', 
         'P(A|B)', 'lim x→∞', '∏(1/n)', 'f(x)=mx+b', 'σ²',
-        'α+β=γ', 'Δy/Δx', 'λφ=φλ', '∞', 'ℝ³'
+        'α+β=γ', 'Δy/Δx', 'λφ=φλ', '∞', 'ℝ³',
+        '∂²u/∂t²', 'e^x', 'π', 'φ=(1+√5)/2', 'log(x)'
     ];
     
     let particles = [];
     
-    // Create particles
-    for (let i = 0; i < 15; i++) {
-        particles.push({
-            x: Math.random() * canvas.width,
-            y: -50,
-            z: Math.random() * 100,
+    // Create particles at random positions across the screen
+    function createParticle() {
+        // Random starting position
+        const startX = Math.random() * canvas.width;
+        const startY = Math.random() * canvas.height;
+        
+        // Direction angles (arrows point into the scene)
+        // Multiple directions to simulate 3D perspective convergence
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 1.5 + 0.8; // Moderate speed
+        
+        return {
+            x: startX,
+            y: startY,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
             text: equations[Math.floor(Math.random() * equations.length)],
-            speed: Math.random() * 0.5 + 0.2,
-            opacity: Math.random() * 0.3 + 0.1
-        });
+            opacity: Math.random() * 0.4 + 0.2,
+            size: Math.random() * 10 + 8,
+            life: 1.0,
+            maxLife: 1.0
+        };
+    }
+    
+    // Initialize particles
+    for (let i = 0; i < 20; i++) {
+        particles.push(createParticle());
     }
     
     function animate() {
-        // Clear with semi-transparent background for motion blur
-        ctx.fillStyle = 'rgba(10, 14, 39, 0.1)';
+        // Clear canvas with semi-transparent fill for motion trail effect
+        ctx.fillStyle = 'rgba(10, 14, 39, 0.15)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        particles.forEach((p, index) => {
-            // Move particle
-            p.y += p.speed * p.z * 0.1;
-            p.z -= 0.5;
+        // Update and draw particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
             
-            // Reset if off screen
-            if (p.y > canvas.height || p.z <= 0) {
-                particles[index] = {
-                    x: Math.random() * canvas.width,
-                    y: -50,
-                    z: Math.random() * 100 + 50,
-                    text: equations[Math.floor(Math.random() * equations.length)],
-                    speed: Math.random() * 0.5 + 0.2,
-                    opacity: Math.random() * 0.3 + 0.1
-                };
+            // Move particle
+            p.x += p.vx;
+            p.y += p.vy;
+            
+            // Fade out
+            p.life -= 0.008;
+            
+            // Remove if off screen or faded
+            if (p.x < -100 || p.x > canvas.width + 100 || 
+                p.y < -100 || p.y > canvas.height + 100 || 
+                p.life <= 0) {
+                particles.splice(i, 1);
+                particles.push(createParticle());
+                continue;
             }
             
-            // Draw particle
-            const scale = (100 - p.z) / 100;
-            const size = 8 + scale * 20;
-            const alpha = p.opacity * scale;
+            // Draw particle with glow effect
+            const alpha = p.opacity * p.life;
             
             ctx.save();
-            ctx.globalAlpha = Math.max(0, alpha);
+            ctx.globalAlpha = alpha * 0.6;
             ctx.fillStyle = '#3498db';
-            ctx.font = `${size}px Arial`;
+            ctx.shadowColor = 'rgba(52, 152, 219, 0.8)';
+            ctx.shadowBlur = 8;
+            ctx.font = `bold ${p.size}px Arial`;
             ctx.fillText(p.text, p.x, p.y);
             ctx.restore();
-        });
+        }
         
         requestAnimationFrame(animate);
     }
